@@ -4,3 +4,8 @@ __pycache__/
 runs/
 wandb/
 checkpoints/
+data/
+export/
+finetuning/data
+finetuning/data 05.zip
+paper/

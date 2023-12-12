@@ -184,6 +184,7 @@ class DFCSEN12MSDataset:
         scene = "{}_{}".format(sensor, scene_id)
         filename = "{}_{}_p{}.tif".format(season, scene, patch_id)
         patch_path = os.path.join(self.base_dir, season, scene, filename)
+        # print(patch_path)
 
         with rasterio.open(patch_path) as patch:
             if window is not None:

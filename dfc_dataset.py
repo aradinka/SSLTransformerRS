@@ -497,6 +497,83 @@ class DFCDataset(Dataset):
 
         plt.show()
 
+    def visualize_observation_prediction(self, idx, transform=False, pred=None, forest_only=False):
+        sample = self.__getitem__(idx, s2_bands=S2Bands.RGB, transform=transform)
+
+        s1 = sample.get("s1")
+        s2 = sample.get("s2")
+        lc = sample.get("lc")
+        dfc = sample.get("dfc")
+
+        fig, axs = plt.subplots(1, 5, figsize=(25, 5))
+        img = np.moveaxis(s2.numpy(), 0, -1)
+        img = img / img.max(axis=(0, 1))
+        axs[0].imshow(img)
+        axs[0].set_title("Sentinel-2 RGB")
+        axs[1].imshow(s1[0])
+        axs[1].set_title("Sentinel-1 VV polarization")
+        axs[2].imshow(s1[1])
+        axs[2].set_title("Sentinel-2 VH polarization")
+
+        if dfc is not None:
+            divider2 = make_axes_locatable(axs[4])
+            cax2 = divider2.append_axes("right", size="5%", pad=0.05)
+            dfc_data = dfc.squeeze()
+            data_stat = dfc_data[dfc_data != 255]
+            data_stat = data_stat[np.isnan(data_stat) == False]
+            mi, ma = int(np.min(data_stat)), int(np.max(data_stat))
+            cmap = plt.get_cmap("RdBu", ma - mi + 1)
+
+            dfc_plot = dfc.squeeze().copy()
+            dfc_plot[dfc_plot == 255] = np.nan
+
+            mat = axs[3].matshow(dfc_plot, cmap=cmap, vmin=mi - 0.5, vmax=ma + 0.5)
+            cax2 = plt.colorbar(
+                mat, ticks=np.arange(mi, ma + 1), cax=cax2, orientation="vertical"
+            )
+
+            axs[3].set_title("DFC Label")
+        else:
+            axs[3].set_title("No HR LC available")
+        axs[3].axis(False)
+
+        import matplotlib.colors as mcolors
+        default_color_map = {
+            0: "#67001e",  # Forest: Green
+            1: "#c13739",  # Shrubland: Sienna
+            2: "#f09b7a",  # Grassland: Gold
+            3: "#fbe3d5",  # Wetlands: Cyan
+            4: "#dceaf2",  # Croplands: Orange
+            5: "#87bfda",  # Urban/Built-up: Dark Gray
+            6: "#3079b6",  # Barren: Gray
+            7: "#053061",  # Water: Blue
+            255: "#15191f",  # Invalid: White
+        }
+        forest_nonforest_color_map = {
+            0: "#67001e",  # Forest: Green
+            1: "#15191f",  # Shrubland: Sienna
+            2: "#15191f",  # Grassland: Gold
+            3: "#15191f",  # Wetlands: Cyan
+            4: "#15191f",  # Croplands: Orange
+            5: "#15191f",  # Urban/Built-up: Dark Gray
+            6: "#15191f",  # Barren: Gray
+            7: "#15191f",  # Water: Blue
+            255: "#15191f",  # Invalid: White
+        }
+        color_map = forest_nonforest_color_map if forest_only else default_color_map
+        pred = pred.squeeze().numpy()
+        if pred.ndim == 3:
+            pred = pred[0]
+        colored_pred = np.zeros((pred.shape[0], pred.shape[1], 3), dtype=np.uint8)
+        for key, color in color_map.items():
+            mask = pred == key
+            colored_pred[mask] = np.array(mcolors.to_rgb(color)) * 255        
+        axs[4].imshow(colored_pred)
+        axs[4].set_title("Prediction")
+        axs[4].axis(False)
+
+        plt.show()
+
     def visualize_observation_old(self, idx, transform=False):
         """this does not handle 255 (ignore_index) values in the LC maps
         and no LC colorbars"""
